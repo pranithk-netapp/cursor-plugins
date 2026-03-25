@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "strict": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node", "mocha", "vscode"],
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

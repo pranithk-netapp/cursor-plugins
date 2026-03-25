@@ -1,0 +1,8 @@
+.vscode-test/**
+test-fixtures/**
+test-output/**
+src/test/**
+**/*.vsix
+**/.DS_Store
+node_modules/**
+!.npmrc

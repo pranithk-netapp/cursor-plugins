@@ -1,0 +1,74 @@
+{
+  "name": "cursor-go-implements-indicator",
+  "displayName": "Cursor Go Implements Indicator",
+  "description": "Clickable Go interface implementation indicators via CodeLens and inline hints.",
+  "icon": "media/logo.png",
+  "version": "0.1.0",
+  "publisher": "pranithk",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pranithk-netapp/cursor-plugins.git"
+  },
+  "homepage": "https://github.com/pranithk-netapp/cursor-plugins",
+  "bugs": {
+    "url": "https://github.com/pranithk-netapp/cursor-plugins/issues"
+  },
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "go",
+    "gopls",
+    "implementations",
+    "codelens",
+    "inlay-hints"
+  ],
+  "activationEvents": [
+    "onLanguage:go"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorGoImplements.show",
+        "title": "Show Go Implementations (from lens)"
+      },
+      {
+        "command": "cursorGoImplements.showAtCursor",
+        "title": "Show Go Implementations"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "cursorGoImplements.showAtCursor",
+          "when": "editorLangId == go && resourceScheme == file",
+          "group": "navigation@1.6"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "package": "vsce package",
+    "test": "npm run compile && node ./dist/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.92.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.7.1",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.2",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0"
+  }
+}
