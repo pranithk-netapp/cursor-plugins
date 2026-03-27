@@ -409,7 +409,6 @@ class GoCoverageManager implements vscode.Disposable {
       backgroundColor: "rgba(64, 184, 90, 0.08)",
       overviewRulerColor: "rgba(170, 228, 190, 0.1)",
       overviewRulerLane: vscode.OverviewRulerLane.Right,
-      border: "1px solid rgba(64, 184, 90, 0.25)",
       before: {
         contentText: "▌",
         color: "#2ea043",
@@ -429,7 +428,6 @@ class GoCoverageManager implements vscode.Disposable {
       backgroundColor: "rgba(250, 205, 110, 0.1)",
       overviewRulerColor: "rgba(252, 224, 168, 0.13)",
       overviewRulerLane: vscode.OverviewRulerLane.Right,
-      border: "1px solid rgba(250, 205, 110, 0.25)",
       before: {
         contentText: "▌",
         color: "#f4bb44",
@@ -448,7 +446,6 @@ class GoCoverageManager implements vscode.Disposable {
       backgroundColor: "rgba(240, 120, 120, 0.1)",
       overviewRulerColor: "rgba(245, 176, 176, 0.1)",
       overviewRulerLane: vscode.OverviewRulerLane.Right,
-      border: "1px solid rgba(240, 120, 120, 0.28)",
       before: {
         contentText: "▌",
         color: "#e65050",
