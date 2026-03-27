@@ -3,7 +3,7 @@
   "displayName": "Cursor Go Implements Indicator",
   "description": "Clickable Go interface implementation indicators via CodeLens and inline hints.",
   "icon": "media/logo.png",
-  "version": "0.9.0",
+  "version": "0.2.0",
   "publisher": "pranithk",
   "license": "MIT",
   "repository": {
