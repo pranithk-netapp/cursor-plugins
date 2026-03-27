@@ -1,10 +1,19 @@
 import * as vscode from "vscode";
+import * as path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel(
     "Cursor Go Implements Indicator"
   );
   context.subscriptions.push(output);
+
+  const coverageManager = new GoCoverageManager(output);
+  context.subscriptions.push(coverageManager);
+  coverageManager.initialize();
 
   const lensProvider = new GoInterfaceLensProvider();
   context.subscriptions.push(
@@ -27,7 +36,20 @@ export function activate(context: vscode.ExtensionContext) {
       if (event.document.languageId === "go") {
         lensProvider.refresh();
         inlayProvider.refresh();
+        coverageManager.applyToVisibleEditors();
       }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeVisibleTextEditors(() => {
+      coverageManager.applyToVisibleEditors();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      coverageManager.applyToVisibleEditors();
     })
   );
 
@@ -80,6 +102,38 @@ export function activate(context: vscode.ExtensionContext) {
         method.name,
         output
       );
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cursorGoImplements.runGoTestCoverage",
+      async () => {
+        await coverageManager.runGoTestsWithCoverage();
+      }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cursorGoImplements.generateCoverageOutFromCovdata",
+      async () => {
+        await coverageManager.generateCoverageOutFromCovdata();
+      }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("cursorGoImplements.clearCoverage", () => {
+      coverageManager.clearDecorations();
+      vscode.window.showInformationMessage("Go coverage decorations cleared.");
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("cursorGoImplements.reloadCoverage", async () => {
+      const summary = await coverageManager.reloadCoverageNow();
+      vscode.window.showInformationMessage(summary);
     })
   );
 }
@@ -345,5 +399,370 @@ function collectInterfaceMethods(
   walk(symbols);
   return methods;
 }
+
+type LineCoverageState = "full" | "partial" | "none";
+
+class GoCoverageManager implements vscode.Disposable {
+  private readonly fullCoverageDecoration = vscode.window.createTextEditorDecorationType(
+    {
+      isWholeLine: true,
+      backgroundColor: "rgba(64, 184, 90, 0.08)",
+      overviewRulerColor: "rgba(170, 228, 190, 0.1)",
+      overviewRulerLane: vscode.OverviewRulerLane.Right,
+      border: "1px solid rgba(64, 184, 90, 0.25)",
+      before: {
+        contentText: "▌",
+        color: "#2ea043",
+        margin: "0 8px 0 0"
+      },
+      after: {
+        contentText: "  COV 100%",
+        color: "#2ea043",
+        margin: "0 0 0 12px"
+      }
+    }
+  );
+
+  private readonly partialCoverageDecoration =
+    vscode.window.createTextEditorDecorationType({
+      isWholeLine: true,
+      backgroundColor: "rgba(250, 205, 110, 0.1)",
+      overviewRulerColor: "rgba(252, 224, 168, 0.13)",
+      overviewRulerLane: vscode.OverviewRulerLane.Right,
+      border: "1px solid rgba(250, 205, 110, 0.25)",
+      before: {
+        contentText: "▌",
+        color: "#f4bb44",
+        margin: "0 8px 0 0"
+      },
+      after: {
+        contentText: "  COV PARTIAL",
+        color: "#f4bb44",
+        margin: "0 0 0 12px"
+      }
+    });
+
+  private readonly noCoverageDecoration = vscode.window.createTextEditorDecorationType(
+    {
+      isWholeLine: true,
+      backgroundColor: "rgba(240, 120, 120, 0.1)",
+      overviewRulerColor: "rgba(245, 176, 176, 0.1)",
+      overviewRulerLane: vscode.OverviewRulerLane.Right,
+      border: "1px solid rgba(240, 120, 120, 0.28)",
+      before: {
+        contentText: "▌",
+        color: "#e65050",
+        margin: "0 8px 0 0"
+      },
+      after: {
+        contentText: "  COV 0%",
+        color: "#e65050",
+        margin: "0 0 0 12px"
+      }
+    }
+  );
+
+  private readonly watcher: vscode.FileSystemWatcher;
+  private lineCoverageByFile = new Map<string, Map<number, LineCoverageState>>();
+
+  constructor(private readonly output: vscode.OutputChannel) {
+    this.watcher = vscode.workspace.createFileSystemWatcher("**/coverage.out");
+    this.watcher.onDidCreate(uri => this.reloadCoverageFrom(uri));
+    this.watcher.onDidChange(uri => this.reloadCoverageFrom(uri));
+    this.watcher.onDidDelete(_uri => {
+      this.lineCoverageByFile.clear();
+      this.applyToVisibleEditors();
+    });
+  }
+
+  public initialize() {
+    void this.loadInitialCoverage();
+  }
+
+  public async runGoTestsWithCoverage() {
+    const editor = vscode.window.activeTextEditor;
+    const workspaceFolder = editor
+      ? vscode.workspace.getWorkspaceFolder(editor.document.uri)
+      : undefined;
+    const cwd = workspaceFolder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!cwd) {
+      vscode.window.showErrorMessage(
+        "Open a workspace folder to run Go tests with coverage."
+      );
+      return;
+    }
+
+    const terminal = vscode.window.createTerminal({
+      name: "Go Test Coverage",
+      cwd
+    });
+    terminal.show();
+    terminal.sendText("go test ./... -covermode=count -coverprofile=coverage.out");
+    this.output.appendLine(`Running Go tests with coverage in ${cwd}`);
+    vscode.window.showInformationMessage(
+      "Running `go test` with coverage. Decorations update after coverage.out is generated."
+    );
+  }
+
+  public async generateCoverageOutFromCovdata() {
+    const editor = vscode.window.activeTextEditor;
+    const workspaceFolder = editor
+      ? vscode.workspace.getWorkspaceFolder(editor.document.uri)
+      : undefined;
+    const cwd =
+      workspaceFolder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!cwd) {
+      vscode.window.showErrorMessage(
+        "Open a workspace folder to generate coverage.out from covdata."
+      );
+      return;
+    }
+
+    const covdataDir = await vscode.window.showInputBox({
+      prompt: "Coverage data directory (GOCOVERDIR output)",
+      value: "covdatafiles",
+      valueSelection: [0, "covdatafiles".length],
+      ignoreFocusOut: true
+    });
+    if (!covdataDir) {
+      return;
+    }
+
+    const outFile = await vscode.window.showInputBox({
+      prompt: "Output coverage profile file",
+      value: "coverage.out",
+      valueSelection: [0, "coverage.out".length],
+      ignoreFocusOut: true
+    });
+    if (!outFile) {
+      return;
+    }
+
+    const covdataPath = path.resolve(cwd, covdataDir);
+    const outPath = path.resolve(cwd, outFile);
+    const command = `go tool covdata textfmt -i="${covdataPath}" -o="${outPath}"`;
+
+    try {
+      this.output.appendLine(`Generating coverage profile: ${command}`);
+      const { stdout, stderr } = await execAsync(command, { cwd });
+      if (stdout.trim()) {
+        this.output.appendLine(stdout.trim());
+      }
+      if (stderr.trim()) {
+        this.output.appendLine(stderr.trim());
+      }
+      await this.reloadCoverageFrom(vscode.Uri.file(outPath));
+      vscode.window.showInformationMessage(
+        `Generated ${path.basename(outPath)} from ${covdataDir} and refreshed decorations.`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      this.output.appendLine(`Failed to generate coverage profile: ${message}`);
+      vscode.window.showErrorMessage(
+        "Failed to generate coverage.out from covdata. Check output channel for details."
+      );
+    }
+  }
+
+  public clearDecorations() {
+    this.lineCoverageByFile.clear();
+    this.applyToVisibleEditors();
+  }
+
+  public async reloadCoverageNow(): Promise<string> {
+    await this.loadInitialCoverage();
+    this.applyToVisibleEditors();
+    const active = vscode.window.activeTextEditor;
+    if (!active || active.document.languageId !== "go") {
+      return "Coverage reloaded. Open a Go file to view inline colors.";
+    }
+    const key = normalizeFsPath(active.document.uri.fsPath);
+    const lineMap = this.lineCoverageByFile.get(key);
+    if (!lineMap || lineMap.size === 0) {
+      return "Coverage reloaded, but no matching lines found for active file.";
+    }
+    return `Coverage reloaded for active file: ${lineMap.size} line(s) highlighted.`;
+  }
+
+  public applyToVisibleEditors() {
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (editor.document.languageId !== "go" || editor.document.uri.scheme !== "file") {
+        continue;
+      }
+      this.applyDecorations(editor);
+    }
+  }
+
+  private async loadInitialCoverage() {
+    const coverageFiles = await vscode.workspace.findFiles("**/coverage.out", "**/node_modules/**", 30);
+    for (const uri of coverageFiles) {
+      await this.reloadCoverageFrom(uri);
+    }
+  }
+
+  private async reloadCoverageFrom(uri: vscode.Uri) {
+    try {
+      const bytes = await vscode.workspace.fs.readFile(uri);
+      const text = Buffer.from(bytes).toString("utf8");
+      const parsed = parseGoCoverage(text, uri, vscode.workspace.workspaceFolders ?? []);
+      this.lineCoverageByFile = parsed;
+      this.applyToVisibleEditors();
+      this.output.appendLine(`Loaded coverage from ${uri.fsPath}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      this.output.appendLine(`Failed to parse coverage file ${uri.fsPath}: ${message}`);
+    }
+  }
+
+  private applyDecorations(editor: vscode.TextEditor) {
+    const lineCoverage = this.lineCoverageByFile.get(normalizeFsPath(editor.document.uri.fsPath));
+    const full: vscode.Range[] = [];
+    const partial: vscode.Range[] = [];
+    const none: vscode.Range[] = [];
+
+    if (lineCoverage) {
+      for (const [line, state] of lineCoverage.entries()) {
+        const lineIdx = line - 1;
+        if (lineIdx < 0 || lineIdx >= editor.document.lineCount) {
+          continue;
+        }
+        const lineRange = editor.document.lineAt(lineIdx).range;
+        if (state === "full") {
+          full.push(lineRange);
+        } else if (state === "partial") {
+          partial.push(lineRange);
+        } else {
+          none.push(lineRange);
+        }
+      }
+    }
+
+    editor.setDecorations(this.fullCoverageDecoration, full);
+    editor.setDecorations(this.partialCoverageDecoration, partial);
+    editor.setDecorations(this.noCoverageDecoration, none);
+  }
+
+  public dispose() {
+    this.watcher.dispose();
+    this.fullCoverageDecoration.dispose();
+    this.partialCoverageDecoration.dispose();
+    this.noCoverageDecoration.dispose();
+  }
+}
+
+function parseGoCoverage(
+  content: string,
+  coverageUri: vscode.Uri,
+  workspaceFolders: readonly vscode.WorkspaceFolder[]
+): Map<string, Map<number, LineCoverageState>> {
+  const fileLineFlags = new Map<string, Map<number, { covered: boolean; uncovered: boolean }>>();
+  const lines = content.split(/\r?\n/);
+  const entryRegex = /^(.+):(\d+)\.(\d+),(\d+)\.(\d+)\s+(\d+)\s+(\d+)$/;
+
+  for (const line of lines) {
+    if (!line || line.startsWith("mode:")) {
+      continue;
+    }
+    const match = entryRegex.exec(line.trim());
+    if (!match) {
+      continue;
+    }
+    const [, rawPath, startLineRaw, , endLineRaw, , , countRaw] = match;
+    const startLine = Number(startLineRaw);
+    const endLine = Number(endLineRaw);
+    const count = Number(countRaw);
+    const covered = count > 0;
+    const normalizedPaths = resolveCoveragePaths(rawPath, coverageUri, workspaceFolders);
+
+    for (const normalizedPath of normalizedPaths) {
+      let lineFlags = fileLineFlags.get(normalizedPath);
+      if (!lineFlags) {
+        lineFlags = new Map<number, { covered: boolean; uncovered: boolean }>();
+        fileLineFlags.set(normalizedPath, lineFlags);
+      }
+      for (let lineNo = startLine; lineNo <= endLine; lineNo++) {
+        const flags = lineFlags.get(lineNo) ?? { covered: false, uncovered: false };
+        if (covered) {
+          flags.covered = true;
+        } else {
+          flags.uncovered = true;
+        }
+        lineFlags.set(lineNo, flags);
+      }
+    }
+  }
+
+  const result = new Map<string, Map<number, LineCoverageState>>();
+  for (const [filePath, perLine] of fileLineFlags.entries()) {
+    const states = new Map<number, LineCoverageState>();
+    for (const [lineNo, flags] of perLine.entries()) {
+      if (flags.covered && flags.uncovered) {
+        states.set(lineNo, "partial");
+      } else if (flags.covered) {
+        states.set(lineNo, "full");
+      } else {
+        states.set(lineNo, "none");
+      }
+    }
+    result.set(filePath, states);
+  }
+
+  return result;
+}
+
+function resolveCoveragePaths(
+  rawPath: string,
+  coverageUri: vscode.Uri,
+  workspaceFolders: readonly vscode.WorkspaceFolder[]
+): string[] {
+  const resolved = new Set<string>();
+  const cleanPath = rawPath.replace(/\\/g, "/");
+
+  if (isAbsolutePath(cleanPath)) {
+    resolved.add(normalizeFsPath(cleanPath));
+  } else {
+    const relativeCandidates = buildRelativeCoverageCandidates(cleanPath);
+    const coverageDir = path.dirname(coverageUri.fsPath);
+    for (const candidateRelPath of relativeCandidates) {
+      resolved.add(normalizeFsPath(path.resolve(coverageDir, candidateRelPath)));
+    }
+    for (const folder of workspaceFolders) {
+      for (const candidateRelPath of relativeCandidates) {
+        const candidate = path.resolve(folder.uri.fsPath, candidateRelPath);
+        resolved.add(normalizeFsPath(candidate));
+      }
+    }
+  }
+
+  return [...resolved];
+}
+
+function buildRelativeCoverageCandidates(cleanPath: string): string[] {
+  const normalized = cleanPath.replace(/^\.\/+/, "");
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts.length <= 1) {
+    return [normalized];
+  }
+  const candidates = new Set<string>([normalized]);
+  for (let i = 1; i < parts.length; i++) {
+    candidates.add(parts.slice(i).join("/"));
+  }
+  return [...candidates];
+}
+
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:\//.test(path);
+}
+
+function normalizeFsPath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
+export const __test = {
+  parseGoCoverage,
+  resolveCoveragePaths,
+  buildRelativeCoverageCandidates,
+  normalizeFsPath
+};
 
 export function deactivate() {}

@@ -3,7 +3,7 @@
   "displayName": "Cursor Go Implements Indicator",
   "description": "Clickable Go interface implementation indicators via CodeLens and inline hints.",
   "icon": "media/logo.png",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "publisher": "pranithk",
   "license": "MIT",
   "repository": {
@@ -25,7 +25,9 @@
     "gopls",
     "implementations",
     "codelens",
-    "inlay-hints"
+    "inlay-hints",
+    "coverage",
+    "unit-test"
   ],
   "activationEvents": [
     "onLanguage:go"
@@ -40,6 +42,22 @@
       {
         "command": "cursorGoImplements.showAtCursor",
         "title": "Show Go Implementations"
+      },
+      {
+        "command": "cursorGoImplements.runGoTestCoverage",
+        "title": "Run Go Unit Tests With Coverage"
+      },
+      {
+        "command": "cursorGoImplements.generateCoverageOutFromCovdata",
+        "title": "Generate coverage.out from GOCOVERDIR (covdata)"
+      },
+      {
+        "command": "cursorGoImplements.clearCoverage",
+        "title": "Clear Go Coverage Decorations"
+      },
+      {
+        "command": "cursorGoImplements.reloadCoverage",
+        "title": "Reload Go Coverage Decorations"
       }
     ],
     "menus": {
@@ -48,6 +66,26 @@
           "command": "cursorGoImplements.showAtCursor",
           "when": "editorLangId == go && resourceScheme == file",
           "group": "navigation@1.6"
+        },
+        {
+          "command": "cursorGoImplements.runGoTestCoverage",
+          "when": "editorLangId == go && resourceScheme == file",
+          "group": "navigation@1.7"
+        },
+        {
+          "command": "cursorGoImplements.clearCoverage",
+          "when": "editorLangId == go && resourceScheme == file",
+          "group": "navigation@1.8"
+        },
+        {
+          "command": "cursorGoImplements.generateCoverageOutFromCovdata",
+          "when": "editorLangId == go && resourceScheme == file",
+          "group": "navigation@1.9"
+        },
+        {
+          "command": "cursorGoImplements.reloadCoverage",
+          "when": "editorLangId == go && resourceScheme == file",
+          "group": "navigation@2.0"
         }
       ]
     }

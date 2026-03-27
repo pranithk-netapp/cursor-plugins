@@ -3,3 +3,4 @@ dist/
 .vscode-test/
 test-output/
 *.vsix
+cursor-go-implements-indicator-*.vsix
