@@ -1,0 +1,38 @@
+openapi: 3.0.0
+info:
+  title: Path Params Fixture
+  version: 1.0.0
+  description: Isolates OAV105 (path-parameter mismatch) signal, one issue kind per path.
+paths:
+  /a/{id}:
+    get:
+      operationId: getA
+      description: No 'parameters' at all, so the '{id}' template has no declaration.
+      responses:
+        "200":
+          description: OK
+  /b/{foo}:
+    get:
+      operationId: getB
+      description: Declares 'bar' instead of 'foo', a name mismatch in both directions.
+      parameters:
+        - name: bar
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /c/{x}:
+    get:
+      operationId: getC
+      description: "Declares 'x' correctly but omits 'required: true'."
+      parameters:
+        - name: x
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK

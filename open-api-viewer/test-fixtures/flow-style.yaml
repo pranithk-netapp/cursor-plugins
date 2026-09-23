@@ -1,0 +1,18 @@
+openapi: 3.0.0
+info:
+  title: Flow Style Fixture
+  version: 1.0.0
+  description: components.schemas is written in flow style so insert.ts must refuse structural edits into it.
+paths:
+  /a:
+    get:
+      operationId: getA
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Foo"
+components:
+  schemas: { Foo: { type: object, properties: { name: { type: string } } } }

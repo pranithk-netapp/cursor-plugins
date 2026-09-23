@@ -1,0 +1,32 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Duplicate OperationId Fixture",
+    "version": "1.0.0",
+    "description": "Two different paths whose operations share the same operationId, for OAV104."
+  },
+  "paths": {
+    "/widgets": {
+      "get": {
+        "operationId": "listThings",
+        "description": "List widgets.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/gadgets": {
+      "get": {
+        "operationId": "listThings",
+        "description": "List gadgets, but reuses the same operationId as /widgets get.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}

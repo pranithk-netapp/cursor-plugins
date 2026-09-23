@@ -1,0 +1,83 @@
+{
+  "OpenAPI: Path Item": {
+    "prefix": "oa-path",
+    "description": "Insert a new path item with one operation and a 200 response",
+    "body": [
+      "${1:/example}:",
+      "  ${2:get}:",
+      "    operationId: ${3:operationId}",
+      "    summary: ${4:Summary}",
+      "    responses:",
+      "      \"${5:200}\":",
+      "        description: ${6:OK}"
+    ]
+  },
+  "OpenAPI: Operation": {
+    "prefix": "oa-op",
+    "description": "Insert a new HTTP method operation with a 200 response",
+    "body": [
+      "${1:get}:",
+      "  operationId: ${2:operationId}",
+      "  summary: ${3:Summary}",
+      "  responses:",
+      "    \"${4:200}\":",
+      "      description: ${5:OK}"
+    ]
+  },
+  "OpenAPI: Schema": {
+    "prefix": "oa-schema",
+    "description": "Insert a new components.schemas entry (object with one property)",
+    "body": [
+      "${1:SchemaName}:",
+      "  type: object",
+      "  properties:",
+      "    ${2:propertyName}:",
+      "      type: ${3:string}",
+      "  required:",
+      "    - ${2:propertyName}"
+    ]
+  },
+  "OpenAPI: Response": {
+    "prefix": "oa-response",
+    "description": "Insert a new response entry with a JSON body referencing a schema",
+    "body": [
+      "\"${1:200}\":",
+      "  description: ${2:OK}",
+      "  content:",
+      "    application/json:",
+      "      schema:",
+      "        \\$ref: \"#/components/schemas/${3:SchemaName}\""
+    ]
+  },
+  "OpenAPI: Parameter": {
+    "prefix": "oa-param",
+    "description": "Insert a new parameter object",
+    "body": [
+      "- name: ${1:paramName}",
+      "  in: ${2|path,query,header,cookie|}",
+      "  required: ${3:true}",
+      "  schema:",
+      "    type: ${4:string}"
+    ]
+  },
+  "OpenAPI: Security Scheme (apiKey)": {
+    "prefix": "oa-security-apikey",
+    "description": "Insert a new components.securitySchemes entry for an apiKey (header) scheme",
+    "body": [
+      "${1:ApiKeyAuth}:",
+      "  type: apiKey",
+      "  in: header",
+      "  name: ${2:X-API-Key}"
+    ]
+  },
+  "OpenAPI: Security Scheme (bearer)": {
+    "prefix": "oa-security-bearer",
+    "description": "Insert a new components.securitySchemes entry for an http bearer scheme",
+    "body": [
+      "${1:BearerAuth}:",
+      "  type: http",
+      "  scheme: bearer",
+      "  bearerFormat: ${2:JWT}"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+.vscode-test/**
+test-fixtures/**
+test-output/**
+src/**
+out/**
+esbuild.mjs
+tsconfig.json
+tsconfig*.json
+Makefile
+.gitignore
+rpc.json
+node_modules/**
+**/*.vsix
+**/*.map
+**/.DS_Store
+!.npmrc

@@ -1,0 +1,1266 @@
+openapi: 3.0.0
+info:
+  description: The resource provider controller service provides a RESTful set of
+    APIs that interacts with Azure Network Resource Provider service, Resource
+    Provider database to migrate network resources and retrieves secrets from
+    Azure Key Vault using Managed Identity.
+  title: Resource Provider Controller
+  version: 2024-09-01
+paths:
+  /v1/nicMigration/prepare:
+    post:
+      description: API to prepare moving a NIC associated with a svm to a destination
+        hyperscaler cluster. This will reserve a VLAN ID in destination cluster
+        by creating dummy NIC and BMT.
+      tags:
+        - Nic Migration
+      operationId: NetworkInterface_Move_Prepare
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareNicMigrationRequest"
+        description: Parameters for prepare network interface move operation.
+        required: true
+      responses:
+        "202":
+          description: Prepare network interface migration job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "409":
+          $ref: "#/components/responses/StandardError-409"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v1/nicMigration/trial:
+    post:
+      description: Trial API checks if NIC associated with a svm can be moved to a
+        destination hyperscaler cluster.
+      tags:
+        - Nic Migration
+      operationId: NetworkInterface_Move_Trial
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrialNicMigrationRequest"
+        description: Parameters for trial network interface move operation.
+        required: true
+      responses:
+        "202":
+          description: Trial network interface migration job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v1/nicMigration/{migrationUuid}:
+    put:
+      description: Start migrating a NIC associated with source svm to destination
+        hyperscaler cluster.
+      tags:
+        - Nic Migration
+      operationId: NetworkInterface_Move
+      parameters:
+        - description: The svm migration Uuid.
+          name: migrationUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Network interface migration job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "409":
+          $ref: "#/components/responses/StandardError-409"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+    get:
+      description: Get details of NIC migration.
+      tags:
+        - Nic Migration
+      operationId: NicMigration_Get
+      parameters:
+        - description: The svm migration Uuid.
+          name: migrationUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Request successful. The operation returns the details of the
+            network interface migration.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NicMigrationResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+    delete:
+      description: Cleanup the NIC migration by deleting dummy BMT and NIC created
+        during prepare operation.
+      tags:
+        - Nic Migration
+      operationId: NetworkInterface_Cleanup
+      parameters:
+        - description: The svm migration Uuid.
+          name: migrationUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Network interface migration cleanup job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v2/svmNicMigration/prepare:
+    post:
+      description: API to prepare moving a list of NICs associated with a svm to a
+        destination hyperscaler cluster. This will reserve a VLAN ID in
+        destination cluster using the AzD API
+      tags:
+        - Nic Migrations
+      operationId: v2_prepareNicMigrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareNicMigrationsV2Request"
+        description: Parameters for prepare network interfaces move operation.
+        required: true
+      responses:
+        "202":
+          description: Prepare network interfaces migration job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationsAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "409":
+          $ref: "#/components/responses/StandardError-409"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v2/svmNicMigration/trial:
+    post:
+      description: Trial API checks if NICs associated with a svm can be moved to a
+        destination hyperscaler cluster.
+      tags:
+        - Nic Migrations
+      operationId: v2_trialNicMigrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrialNicMigrationsV2Request"
+        description: Parameters for trial network interfaces move operation.
+        required: true
+      responses:
+        "202":
+          description: Trial network interfaces migration job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationsAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v2/svmNicMigration/{migrationUuid}:
+    put:
+      description: Start migrating a list of NICs associated with source svm to
+        destination hyperscaler cluster.
+      tags:
+        - Nic Migrations
+      operationId: v2_moveNicMigrations
+      parameters:
+        - description: The svm migration Uuid.
+          name: migrationUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Network interfaces migration job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationsAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "409":
+          $ref: "#/components/responses/StandardError-409"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+    get:
+      description: Get details of SVM NIC migrations.
+      tags:
+        - Nic Migrations
+      operationId: v2_describeNicMigrations
+      parameters:
+        - description: The svm migration Uuid.
+          name: migrationUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Request successful. The operation returns the details of the
+            network interface migrations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationV2Response"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+    delete:
+      description: Roll back the SVM NIC migrations prepare operation.
+      tags:
+        - Nic Migrations
+      operationId: v2_rollbackNicMigrations
+      parameters:
+        - description: The svm migration Uuid.
+          name: migrationUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Network interfaces migration rollback job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicMigrationsAsyncResponse"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v1/job/{uuid}:
+    get:
+      operationId: GetJob
+      summary: API to query specific job using Uuid
+      tags:
+        - Job
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          description: uuid used to identify job
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Get job status successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v1/clusterPeer/CleanupNetworkInfrastructure:
+    post:
+      description: Api that CVS will use to cleanup nic's and bmt's that was created
+        for peering on-prem cluster to ANF.
+      tags:
+        - ClusterPeer
+      operationId: CleanupNetworkInfrastructure
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClusterPeerCleanupNetworkInfrastructureRequest"
+        description: Parameters for cleanup network infrastructure of cluster peer.
+        required: true
+      responses:
+        "200":
+          description: Cleanup of network infrastructure received successfully.
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v1/swiftNetwork/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/infrastructureVirtualNetworks/{infrastructureVirtualNetworkName}:
+    put:
+      description: Api that CVS/SDS will use to create infrastructure virtual network
+        for Swift Networking in ANF Atom.
+      tags:
+        - SwiftNetwork
+      operationId: CreateInfrastructureVirtualNetwork
+      parameters:
+        - description: The subscription credentials which uniquely identify the Microsoft
+            Azure subscription. The subscription ID forms part of the URI for
+            every service call.
+          name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - description: The name of the resource group.
+          name: resourceGroupName
+          in: path
+          required: true
+          schema:
+            type: string
+        - description: The name of the infrastructure virtual network.
+          name: infrastructureVirtualNetworkName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-ms-correlation-id
+          in: header
+          required: false
+          description: The correlation identifier in UUID format.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInfrastructureVirtualNetworkRequest"
+        description: The request object to create infrastructure virtual network for ANF
+          Atom.
+        required: true
+      responses:
+        "202":
+          description: Infrastructure virtual network created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VirtualNetwork"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "409":
+          $ref: "#/components/responses/StandardError-409"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+    get:
+      description: Get details of Infrastructure virtual network for Swift Networking
+        in ANF Atom.
+      tags:
+        - SwiftNetwork
+      operationId: GetInfrastructureVirtualNetwork
+      parameters:
+        - description: The subscription credentials which uniquely identify the Microsoft
+            Azure subscription. The subscription ID forms part of the URI for
+            every service call.
+          name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - description: The name of the resource group.
+          name: resourceGroupName
+          in: path
+          required: true
+          schema:
+            type: string
+        - description: The name of the infrastructure virtual network.
+          name: infrastructureVirtualNetworkName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-ms-correlation-id
+          in: header
+          required: false
+          description: The correlation identifier in UUID format.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Request successful. The operation returns the details of the
+            infrastructure virtual network.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VirtualNetwork"
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+    delete:
+      description: Delete infrastructure virtual network created for Swift Networking
+        in ANF Atom.
+      tags:
+        - SwiftNetwork
+      operationId: DeleteInfrastructureVirtualNetwork
+      parameters:
+        - description: The subscription credentials which uniquely identify the Microsoft
+            Azure subscription. The subscription ID forms part of the URI for
+            every service call.
+          name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - description: The name of the resource group.
+          name: resourceGroupName
+          in: path
+          required: true
+          schema:
+            type: string
+        - description: The name of the infrastructure virtual network.
+          name: infrastructureVirtualNetworkName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-ms-correlation-id
+          in: header
+          required: false
+          description: The correlation identifier in UUID format.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Infrastructure virtual network deleted successfully.
+        "404":
+          $ref: "#/components/responses/StandardError-404"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+  /v1/health:
+    get:
+      description: Api that the liveness probe will use to perform health checks on
+        the Resource Provider Controller.
+      tags:
+        - Health
+      operationId: HealthCheck
+      responses:
+        "200":
+          description: Health check successful
+  /v1/akv/FetchAkvObjectData:
+    post:
+      description: Generic API to retrieve AKV secret or certificate data from Azure
+        Key Vault using MSI assigned to the resource. The method navigates to
+        the root resource (NetApp account or ActiveDirectoryConfig)
+        automatically to resolve the MSI identity. The service generates a
+        random 32-byte encryption key to encrypt the object value with
+        AES-256-GCM, then encrypts that encryption key using the RSA public key
+        from the x-rsa-public-key header.
+      tags:
+        - Akv data fetch
+      operationId: Akv_Data_Fetch_Object
+      parameters:
+        - name: x-ms-correlation-id
+          in: header
+          required: false
+          description: The correlation identifier in UUID format.
+          schema:
+            type: string
+            format: uuid
+        - name: x-rsa-public-key
+          in: header
+          required: true
+          description: RSA public key used to encrypt the randomly generated 32-byte
+            encryption key.
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchAkvObjectDataRequest"
+        description: Parameters for fetching AKV object data.
+        required: true
+      responses:
+        "200":
+          description: AKV object retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AkvObjectData"
+        "400":
+          $ref: "#/components/responses/StandardError-400"
+        "409":
+          $ref: "#/components/responses/StandardError-409"
+        "500":
+          $ref: "#/components/responses/StandardError-500"
+security:
+  - ApiKey: []
+    SecretKey: []
+servers:
+  - url: https://management.netapp.com
+components:
+  responses:
+    StandardError-400:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                code: 400
+                message: Bad Request or Input
+    StandardError-404:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                code: 404
+                message: The resource was not found
+    StandardError-409:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                code: 409
+                message: Conflict. Resource already exists
+    StandardError-500:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                code: 500
+                message: Internal server Error
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      name: api-key
+      in: header
+    SecretKey:
+      type: apiKey
+      name: secret-key
+      in: header
+  schemas:
+    TrialNicMigrationRequest:
+      description: The request object for trial NIC move operation payload
+      required:
+        - vendorSubnetId
+        - svmName
+        - migrationUuid
+        - destinationHSClusterUuid
+        - destinationHSClusterNetworkConnectivity
+        - sourceHSClusterUuid
+      properties:
+        vendorSubnetId:
+          description: The vendor subnet Id.
+          type: string
+        migrationUuid:
+          type: string
+          description: The svm migration Uuid.
+        sourceHSClusterUuid:
+          type: string
+          description: The source hyperscaler cluster Uuid.
+        destinationHSClusterUuid:
+          type: string
+          description: The destination hyperscaler cluster Uuid.
+        destinationHSClusterProvisionedStorageAvailabilityZone:
+          description: >
+            The destination hyperscaler cluster provisioned storage availability
+            zone refers to the storage availability zone
+
+            where the hyperscaler cluster resides. In Azure, this refers to the
+            physical availability zone where hyperscaler cluster resides.
+          type: string
+        destinationHSClusterNetworkConnectivity:
+          description: The destination hyperscaler cluster network connectivity.
+          type: string
+        destinationHSClusterPublicNetworkConnectivity:
+          description: The destination hyperscaler cluster public network connectivity.
+          type: string
+        svmName:
+          description: The name of the svm.
+          type: string
+    PrepareNicMigrationRequest:
+      description: The request object for prepare NIC operation payload
+      required:
+        - vendorSubnetId
+        - svmName
+        - migrationUuid
+        - destinationHSClusterUuid
+        - destinationHostId
+        - destinationStampId
+        - destinationHSClusterNetworkConnectivity
+        - sourceHSClusterUuid
+      properties:
+        vendorSubnetId:
+          description: The vendor subnet Id.
+          type: string
+        migrationUuid:
+          type: string
+          description: The svm migration Uuid.
+        sourceHSClusterUuid:
+          type: string
+          description: The source hyperscaler cluster Uuid.
+        destinationHSClusterUuid:
+          type: string
+          description: The destination hyperscaler cluster Uuid.
+        destinationHostId:
+          description: The destination host Id (or host name if host Id was null)
+          type: string
+        destinationStampId:
+          description: The destination stamp Id (or stamp name if host Id was null)
+          type: string
+        destinationHSClusterProvisionedStorageAvailabilityZone:
+          description: >
+            The destination hyperscaler cluster provisioned storage availability
+            zone refers to the storage availability zone
+
+            where the hyperscaler cluster resides. In Azure, this refers to the
+            physical availability zone where hyperscaler cluster resides.
+          type: string
+        destinationHSClusterNetworkConnectivity:
+          description: The destination hyperscaler cluster network connectivity.
+          type: string
+        destinationHSClusterPublicNetworkConnectivity:
+          description: The destination hyperscaler cluster public network connectivity.
+          type: string
+        svmName:
+          description: The name of the svm.
+          type: string
+    PrepareNicMigrationsV2Request:
+      description: The request object for prepare SVM NIC migrations operation.
+      required:
+        - svmName
+        - migrationUuid
+        - sourceHSClusterUuid
+        - destinationHSClusterUuid
+        - destinationHostId
+        - destinationStampId
+      properties:
+        migrationUuid:
+          type: string
+          description: The SVM NIC migrations Uuid.
+        sourceHSClusterUuid:
+          type: string
+          description: The source hyperscaler cluster Uuid.
+        destinationHSClusterUuid:
+          type: string
+          description: The destination hyperscaler cluster Uuid.
+        destinationHostId:
+          description: The destination host Id (or host name if host Id was null)
+          type: string
+        destinationStampId:
+          description: The destination stamp Id (or stamp name if host Id was null)
+          type: string
+        svmName:
+          description: The name of the svm.
+          type: string
+    TrialNicMigrationsV2Request:
+      description: The request object for trial SVM NIC migrations operation.
+      required:
+        - svmName
+        - migrationUuid
+        - destinationHSClusterUuid
+      properties:
+        migrationUuid:
+          type: string
+          description: The SVM NIC migrations Uuid.
+        destinationHSClusterUuid:
+          type: string
+          description: The destination hyperscaler cluster Uuid.
+        svmName:
+          description: The name of the svm.
+          type: string
+    Error:
+      description: An error response from the service.
+      type: object
+      properties:
+        code:
+          description: An identifier for the error.
+          type: string
+        message:
+          description: A message describing the error, intended to be suitable for display
+            in a user interface.
+          type: string
+      required:
+        - code
+        - message
+    MigrationState:
+      description: The current NIC migration state.
+      type: string
+      enum:
+        - New
+        - Preparing
+        - Prepared
+        - Moving
+        - Moved
+        - Deleting
+        - Deleted
+        - Failed
+      readOnly: true
+    MigrationStateDetails:
+      description: The details of the current NIC migration state.
+      type: string
+      enum:
+        - None
+        - LockNssStarted
+        - LockNssFinished
+        - TrialCheckStarted
+        - TrialCheckFinished
+        - DummyNicCreationStarted
+        - DummyNicCreationFinished
+        - DummyBmtCreationStarted
+        - DummyBmtCreationFinished
+        - DummySourceNicCreationStarted
+        - DummySourceNicCreationFinished
+        - DummySourceBmtCreationStarted
+        - DummySourceBmtCreationFinished
+        - CreateOrphanEntriesStarted
+        - CreateOrphanEntriesFinished
+        - AddNicMigrationVolumesStarted
+        - AddNicMigrationVolumesFinished
+        - UpdateVolumeResourceTableStarted
+        - UpdateVolumeResourceTableFinished
+        - DeleteSourceBmtStarted
+        - DeleteSourceBmtFinished
+        - CreateDestinationBmtStarted
+        - CreateDestinationBmtFinished
+        - AssociateVolumeWithDestinationBmtStarted
+        - AssociateVolumeWithDestinationBmtFinished
+        - RetrieveNssEntriesStarted
+        - RetrieveNssEntriesFinished
+        - UpdateNssTableStarted
+        - UpdateNssTableFinished
+        - UpdateNssNicTableStarted
+        - UpdateNssNicTableFinished
+        - DeleteDummyBmtStarted
+        - DeleteDummyBmtFinished
+        - DeleteDummyNicStarted
+        - DeleteDummyNicFinished
+        - DeleteDummySourceBmtStarted
+        - DeleteDummySourceBmtFinished
+        - DeleteDummySourceNicStarted
+        - DeleteDummySourceNicFinished
+        - DeleteOrphanEntriesStarted
+        - DeleteOrphanEntriesFinished
+        - UnlockNssStarted
+        - UnlockNssFinished
+    NicMigrationAsyncResponse:
+      description: The response payload for asynchronous NIC migration operations.
+      properties:
+        jobUuid:
+          description: The NIC migration job Uuid.
+          type: string
+    NicMigrationsAsyncResponse:
+      description: The response payload for asynchronous SVM NIC migrations operations.
+      properties:
+        jobUuid:
+          description: The SVM NIC migrations job Uuid.
+          type: string
+    NicMigrationResponse:
+      description: The response payload for get NIC migration operation.
+      properties:
+        state:
+          $ref: "#/components/schemas/MigrationState"
+        stateDetails:
+          $ref: "#/components/schemas/MigrationStateDetails"
+        criticalWarnings:
+          description: A critical warning message regarding the NIC migration.
+          type: string
+        lastLifeCycleState:
+          $ref: "#/components/schemas/MigrationState"
+        migrationUuid:
+          description: The network interface migration Uuid.
+          type: string
+        sourceSvmName:
+          description: The source svm name.
+          type: string
+        sourceBmtId:
+          description: The source bare metal tenant Id.
+          type: string
+        sourceNicId:
+          description: The source network interface Id.
+          type: string
+        dummyBmtId:
+          description: The dummy destination bare metal tenant Id.
+          type: string
+        dummyNicId:
+          description: The dummy destination network interface Id.
+          type: string
+        dummySourceBmtId:
+          description: The dummy source bare metal tenant Id.
+          type: string
+        dummySourceNicId:
+          description: The dummy source network interface Id.
+          type: string
+        vlanId:
+          description: The vlan Id reserved on destination hyperscaler cluster.
+          type: integer
+        destinationHSClusterUuid:
+          description: The destination hyperscaler cluster Uuid.
+          type: string
+        destinationHostId:
+          description: The destination host Id (or host name if host Id was null)
+          type: string
+        destinationStampId:
+          description: The destination stamp Id (or stamp name if host Id was null)
+          type: string
+        vendorSubnetId:
+          description: The vendor subnet Id.
+          type: string
+        volumeResourceIds:
+          description: The list of volume resource Ids associated with a NIC.
+          type: array
+          items:
+            type: string
+        hasDeleteBeenRequested:
+          description: A flag indicating whether cleanup was requested earlier for this
+            migration.
+          type: boolean
+        subscriptionUuid:
+          description: The subscription UUID.
+          type: string
+        sourceHSClusterUuid:
+          description: The source hyperscaler cluster Uuid.
+          type: string
+        DestinationProvisionedAvailabilityZone:
+          description: The (logical) availability zone that the volumes were already
+            provisioned with.
+          type: string
+        DestinationProvisionedStorageAvailabilityZone:
+          description: The storage (physical) availability zone.
+          type: string
+        DestinationNetworkConnectivity:
+          description: The network connectivity that is used to set the network
+            connectivities of the volumes.
+          type: string
+        NetworkFeatures:
+          description: The network features of the migrating NIC
+          type: string
+    NicMigrationV2Response:
+      description: The response payload for get SVM NIC migrations operation.
+      properties:
+        state:
+          $ref: "#/components/schemas/MigrationState"
+        stateDetails:
+          $ref: "#/components/schemas/MigrationStateDetails"
+        criticalWarnings:
+          description: A critical warning message regarding the SVM NIC migrations.
+          type: string
+        lastLifeCycleState:
+          $ref: "#/components/schemas/MigrationState"
+        migrationUuid:
+          description: The SVM NIC migrations Uuid.
+          type: string
+        sourceSvmName:
+          description: The source svm name.
+          type: string
+        vlanId:
+          description: The vlan Id reserved on destination hyperscaler cluster.
+          type: integer
+        destinationHSClusterUuid:
+          description: The destination hyperscaler cluster Uuid.
+          type: string
+        destinationHostId:
+          description: The destination host Id (or host name if host Id was null)
+          type: string
+        destinationStampId:
+          description: The destination stamp Id (or stamp name if host Id was null)
+          type: string
+        subscriptionUuid:
+          description: The subscription UUID.
+          type: string
+        hasDeleteBeenRequested:
+          description: A flag indicating whether cleanup was requested for the SVM NIC
+            migrations.
+          type: boolean
+        NetworkInterfaces:
+          description: The list of network interfaces to be migrated.
+          type: array
+          items:
+            $ref: "#/components/schemas/NicMigrationNetworkInterfaceV2"
+    NicMigrationNetworkInterfaceV2:
+      description: The network interface object for SVM NIC migrations.
+      properties:
+        state:
+          $ref: "#/components/schemas/MigrationState"
+        stateDetails:
+          $ref: "#/components/schemas/MigrationStateDetails"
+        criticalWarnings:
+          description: A critical warning message regarding the NIC migration.
+          type: string
+        lastLifeCycleState:
+          $ref: "#/components/schemas/MigrationState"
+        nicId:
+          description: The source network interface Id.
+          type: string
+        vendorSubnetId:
+          description: The vendor subnet Id.
+          type: string
+        volumeResourceIds:
+          description: The list of volume resource Ids associated with a NIC.
+          type: array
+          items:
+            type: string
+        hasDeleteBeenRequested:
+          description: A flag indicating whether cleanup was requested earlier for this
+            network interface migration.
+          type: boolean
+    Job:
+      type: object
+      title: job
+      properties:
+        Uuid:
+          title: jobUuid
+          type: string
+          readOnly: true
+          description: Uuid to identify job.
+          format: uuid
+        state:
+          description: The state of the job.
+          type: string
+          enum:
+            - Created
+            - Inprogress
+            - Failed
+            - Completed
+        stateDetails:
+          description: The state details of the job.
+          type: string
+        lastUpdatedAt:
+          title: lastUpdatedAt
+          type: string
+          readOnly: true
+          description: The last time the job status was updated.
+    ClusterPeerCleanupNetworkInfrastructureRequest:
+      description: The request object for cleanup cluster peer network infrastructure
+      required:
+        - subscriptionId
+        - clusterPeerUuid
+      properties:
+        subscriptionId:
+          description: Resource id of subscription.
+          type: string
+        clusterPeerUuid:
+          type: string
+          description: Cluster peer uuid.
+    CreateInfrastructureVirtualNetworkRequest:
+      description: The request object to create infrastructure virtual network for ANF Atom
+      required:
+        - addressSpace
+      properties:
+        addressSpace:
+          description: Infrastructure virtual network address space.
+          type: string
+          example: 10.193.167.150/24
+    VirtualNetwork:
+      description: Virtual Network resource.
+      allOf:
+        - $ref: "#/components/schemas/resource"
+      properties:
+        etag:
+          description: A unique read-only string that changes whenever the resource is
+            updated.
+          type: string
+          readOnly: true
+        properties:
+          $ref: "#/components/schemas/VirtualNetworkPropertiesFormat"
+    resource:
+      description: Common resource representation.
+      properties:
+        id:
+          description: Resource ID.
+          type: string
+        location:
+          description: Resource location.
+          type: string
+        name:
+          description: Resource name.
+          type: string
+          readOnly: true
+        tags:
+          description: Resource tags.
+          type: object
+          additionalProperties:
+            type: string
+        type:
+          description: Resource type.
+          type: string
+          readOnly: true
+      x-ms-azure-resource: true
+    VirtualNetworkPropertiesFormat:
+      description: Properties of the virtual network.
+      properties:
+        addressSpace:
+          $ref: "#/components/schemas/AddressSpace"
+        provisioningState:
+          $ref: "#/components/schemas/provisioningState"
+        resourceGuid:
+          description: The resourceGuid property of the Virtual Network resource.
+          type: string
+          readOnly: true
+        subnets:
+          description: A list of subnets in a Virtual Network.
+          type: array
+          items:
+            $ref: "#/components/schemas/Subnet"
+    AddressSpace:
+      description: AddressSpace contains an array of IP address ranges that can be
+        used by subnets of the virtual network.
+      properties:
+        addressPrefixes:
+          description: A list of address blocks reserved for this virtual network in CIDR
+            notation.
+          type: array
+          items:
+            type: string
+    provisioningState:
+      description: The current provisioning state.
+      type: string
+      enum:
+        - Succeeded
+        - Updating
+        - Deleting
+        - Failed
+      x-ms-enum:
+        modelAsString: true
+        name: ProvisioningState
+      readOnly: true
+    Subnet:
+      description: Subnet in a virtual network resource.
+      allOf:
+        - $ref: "#/components/schemas/subResource"
+      properties:
+        etag:
+          description: A unique read-only string that changes whenever the resource is
+            updated.
+          type: string
+          readOnly: true
+        name:
+          description: The name of the resource that is unique within a resource group.
+            This name can be used to access the resource.
+          type: string
+        properties:
+          $ref: "#/components/schemas/SubnetPropertiesFormat"
+        type:
+          description: Resource type.
+          type: string
+    subResource:
+      description: Reference to another subresource.
+      properties:
+        id:
+          description: Resource ID.
+          type: string
+      x-ms-azure-resource: true
+    SubnetPropertiesFormat:
+      description: Properties of the subnet.
+      properties:
+        addressPrefix:
+          description: The address prefix for the subnet.
+          type: string
+        addressPrefixes:
+          description: List of address prefixes for the subnet.
+          type: array
+          items:
+            type: string
+        delegations:
+          description: An array of references to the delegations on the subnet.
+          type: array
+          items:
+            $ref: "#/components/schemas/Delegation"
+        ipConfigurations:
+          description: An array of references to the network interface IP configurations
+            using subnet.
+          type: array
+          items:
+            $ref: "#/components/schemas/ipConfiguration"
+          readOnly: true
+        provisioningState:
+          $ref: "#/components/schemas/provisioningState"
+        purpose:
+          description: A read-only string identifying the intention of use for this subnet
+            based on delegations and other user-defined properties.
+          type: string
+          readOnly: true
+    Delegation:
+      description: Details the service to which the subnet is delegated.
+      allOf:
+        - $ref: "#/components/schemas/subResource"
+      properties:
+        etag:
+          description: A unique read-only string that changes whenever the resource is
+            updated.
+          type: string
+          readOnly: true
+        name:
+          description: The name of the resource that is unique within a subnet. This name
+            can be used to access the resource.
+          type: string
+        properties:
+          $ref: "#/components/schemas/ServiceDelegationPropertiesFormat"
+        type:
+          description: Resource type.
+          type: string
+    ServiceDelegationPropertiesFormat:
+      description: Properties of a service delegation.
+      properties:
+        actions:
+          description: The actions permitted to the service upon delegation.
+          type: array
+          items:
+            type: string
+          readOnly: true
+        provisioningState:
+          $ref: "#/components/schemas/provisioningState"
+        serviceName:
+          description: The name of the service to whom the subnet should be delegated
+            (e.g. Microsoft.Sql/servers).
+          type: string
+    ipConfiguration:
+      description: IP configuration.
+      allOf:
+        - $ref: "#/components/schemas/subResource"
+      properties:
+        etag:
+          description: A unique read-only string that changes whenever the resource is
+            updated.
+          type: string
+          readOnly: true
+        name:
+          description: The name of the resource that is unique within a resource group.
+            This name can be used to access the resource.
+          type: string
+        properties:
+          $ref: "#/components/schemas/ipConfigurationPropertiesFormat"
+    ipConfigurationPropertiesFormat:
+      description: Properties of IP configuration.
+      properties:
+        privateIPAddress:
+          description: The private IP address of the IP configuration.
+          type: string
+        privateIPAllocationMethod:
+          $ref: "#/components/schemas/ipAllocationMethod"
+        provisioningState:
+          $ref: "#/components/schemas/provisioningState"
+        publicIPAddress:
+          $ref: "#/components/schemas/publicIpAddress"
+        subnet:
+          $ref: "#/components/schemas/frontendIpConfigurationPropertiesFormatSubnet"
+    ipAllocationMethod:
+      description: IP address allocation method.
+      type: string
+      enum:
+        - Static
+        - Dynamic
+      x-ms-enum:
+        modelAsString: true
+        name: IPAllocationMethod
+    publicIpAddress:
+      description: Public IP address resource.
+      allOf:
+        - $ref: "#/components/schemas/resource"
+    frontendIpConfigurationPropertiesFormatSubnet:
+      description: Subnet in a virtual network resource.
+      allOf:
+        - $ref: "#/components/schemas/subResource"
+    FetchAkvObjectDataRequest:
+      description: Request object for fetching AKV object data from Azure Key Vault.
+      required:
+        - resourceId
+        - akvUri
+        - objectName
+        - objectType
+      properties:
+        resourceId:
+          description: The resource ID at any level in the resource hierarchy (e.g.,
+            netAppAccount, activeDirectoryConfig, ldapConfig). The service
+            automatically navigates to the root resource to resolve the MSI
+            identity for AKV authentication.
+          type: string
+          pattern: ^/subscriptions/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/resourceGroups/[^/]+/providers/Microsoft\.NetApp/.+$
+          example: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG/providers/Microsoft.NetApp/netAppAccounts/account1
+        akvUri:
+          description: The Azure Key Vault URI from which the object is retrieved.
+          type: string
+          minLength: 1
+          maxLength: 2048
+          pattern: ^(?i)https://[a-z][a-z0-9-]*\.vault.*$
+          example: https://mykeyvault.vault.azure.net/
+        objectName:
+          description: The name of the AKV object (secret or certificate name).
+          type: string
+          minLength: 1
+          maxLength: 127
+          pattern: ^[a-zA-Z0-9-]+$
+          example: my-secret-name
+        objectType:
+          description: The type of AKV object to fetch. Valid values are Secret or
+            Certificate.
+          type: string
+          enum:
+            - Secret
+            - Certificate
+          example: Secret
+        msiResourceId:
+          description: The resource ID of the user-assigned managed identity to use for
+            AKV authentication. If not provided, the system-assigned identity is
+            used.
+          type: string
+          maxLength: 2048
+          pattern: ^/subscriptions/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/resourceGroups/[^/]+/providers/Microsoft\.ManagedIdentity/userAssignedIdentities/[^/]+$
+          nullable: true
+          example: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myIdentity
+        msiIdentityUrl:
+          description: MSI Identity URL to fetch metadata for accessing the AKV.
+          type: string
+          maxLength: 2048
+          format: uri
+          nullable: true
+          example: https://control-region.identity.azure.net/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG/providers/Microsoft.NetApp/resource/account/credentials/v2/identity-type
+    AkvObjectData:
+      description: AKV object data (secret or certificate) retrieved from Azure Key
+        Vault. The object value is encrypted using AES-256-GCM with a randomly
+        generated 32-byte encryption key, and that encryption key is encrypted
+        using the RSA public key provided in the x-rsa-public-key header.
+      properties:
+        objectValue:
+          description: The AKV object value encrypted using AES-256-GCM with a randomly
+            generated 32-byte encryption key.
+          type: string
+        encryptionKey:
+          description: The randomly generated 32-byte encryption key encrypted using the
+            RSA public key provided in the x-rsa-public-key request header.
+          type: string

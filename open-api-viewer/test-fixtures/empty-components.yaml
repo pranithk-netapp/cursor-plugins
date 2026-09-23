@@ -1,0 +1,12 @@
+openapi: 3.0.0
+info:
+  title: Empty Components Fixture
+  version: 1.0.0
+  description: Has no 'components' key at all, so inserting a schema must create components.schemas from scratch.
+paths:
+  /a:
+    get:
+      operationId: getA
+      responses:
+        "200":
+          description: OK

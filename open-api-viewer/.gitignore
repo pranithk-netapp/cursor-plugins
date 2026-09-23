@@ -1,0 +1,6 @@
+dist/
+out/
+media/dist/
+media/swagger-ui/
+*.vsix
+.vscode-test/

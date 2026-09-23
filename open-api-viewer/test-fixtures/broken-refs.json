@@ -1,0 +1,60 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Broken Refs Fixture",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/widgets/{id}": {
+      "get": {
+        "operationId": "getWidget",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A widget that references a schema which does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoesNotExist"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "other.yaml#/components/schemas/X"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "UnusedSchema": {
+        "type": "object",
+        "description": "Nothing references this component; used by a later phase's unused-component rule.",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
